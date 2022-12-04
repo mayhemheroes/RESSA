@@ -1,0 +1,19 @@
+---
+source: tests/everything_js.rs
+expression: res
+---
+[
+    Decl(
+        Export(
+            Default(
+                Expr(
+                    Lit(
+                        Number(
+                            "0",
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    ),
+]

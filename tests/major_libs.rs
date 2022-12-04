@@ -2,7 +2,9 @@
 use env_logger;
 use ressa::Parser;
 
-use super::{get_js_file, Lib};
+mod libs_common;
+
+use libs_common::Lib;
 
 #[test]
 fn angular1() {
@@ -51,7 +53,7 @@ fn dexie() {
 }
 
 fn run_test(name: &str, normal: String, min: String) {
-    let _ = env_logger::try_init();
+    let _ = env_logger::builder().is_test(true).try_init().ok();
     println!("parsing: {} chars", min.len());
     let mut p = Parser::builder()
         .js(&normal)
@@ -84,12 +86,12 @@ fn get_js(l: Lib) -> Result<(String, String), ::std::io::Error> {
 }
 
 fn get_normal_js(l: Lib) -> Result<String, ::std::io::Error> {
-    get_js_file(l.path())
+    libs_common::get_js_file(l.path())
 }
 
 fn get_min_js(l: Lib) -> Result<String, ::std::io::Error> {
     if let Some(p) = l.min_path() {
-        get_js_file(&p)
+        libs_common::get_js_file(&p)
     } else {
         Err(::std::io::Error::new(
             ::std::io::ErrorKind::NotFound,

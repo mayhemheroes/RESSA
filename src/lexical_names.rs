@@ -1,6 +1,12 @@
 use super::{Error, Position, Res};
 use hash_chain::ChainMap;
-use resast::prelude::*;
+use resast::spanned::{
+    decl::ExportSpecifier,
+    expr::{Expr, Lit, Prop, PropKey, PropValue},
+    pat::{ArrayPatPart, ObjPatPart, Pat},
+    Ident,
+};
+
 use std::{borrow::Cow, collections::HashSet};
 type LexMap<'a> = ChainMap<Cow<'a, str>, Position>;
 type VarMap<'a> = ChainMap<Cow<'a, str>, Vec<Position>>;
@@ -100,7 +106,7 @@ impl<'a> DuplicateNameDetector<'a> {
             }
             DeclKind::Var(is_module) => {
                 for (idx, scope) in self.states.iter().enumerate().rev() {
-                    trace!("checking scope {}", idx);
+                    log::trace!("checking scope {}", idx);
                     let error = if self.lex.has_at(idx, &i) && !scope.is_simple_catch() {
                         if let Some(Some(lex)) = self.first_lexes.get(idx) {
                             &i != lex
@@ -108,7 +114,7 @@ impl<'a> DuplicateNameDetector<'a> {
                             true
                         }
                     } else {
-                        trace!(
+                        log::trace!(
                             "looking for dupe in {} funcs_as_var: {}, funcs_has {}",
                             idx,
                             scope.funcs_as_var(is_module),
@@ -138,15 +144,15 @@ impl<'a> DuplicateNameDetector<'a> {
             }
             DeclKind::Func(is_module) => {
                 let state = if let Some(state) = self.states.last() {
-                    trace!("last state found {:?}", state);
+                    log::trace!("last state found {:?}", state);
                     *state
                 } else {
                     Scope::default()
                 };
                 self.check_lex(i.clone(), pos)?;
-                trace!("not in lexical decls");
+                log::trace!("not in lexical decls");
                 if !state.funcs_as_var(is_module) {
-                    trace!("state does not indicate functions should be treated as vars");
+                    log::trace!("state does not indicate functions should be treated as vars");
                     self.check_var(i.clone(), pos)?;
                 }
                 self.add_func(i, pos)
@@ -161,15 +167,16 @@ impl<'a> DuplicateNameDetector<'a> {
         log::trace!("declare_pat {:?} {:?} {:?}", pat, kind, pos);
         match pat {
             Pat::Ident(ref i) => {
-                log::trace!("add_pat ident {:?}", i.name);
-                self.declare(i.name.clone(), kind, pos)
+                log::trace!("add_pat ident {:?}", i.slice.source);
+                self.declare(i.slice.source.clone(), kind, pos)
             }
             Pat::Array(ref a) => {
-                for part in a {
-                    if let Some(ref i) = part {
+                for part in &a.elements {
+                    if let Some(ref i) = part.item {
                         match i {
                             ArrayPatPart::Expr(ex) => self.declare_expr(ex, kind, pos)?,
                             ArrayPatPart::Pat(pat) => self.declare_pat(pat, kind, pos)?,
+                            ArrayPatPart::Rest(rest) => self.declare_pat(&rest.pat, kind, pos)?,
                         }
                     }
                 }
@@ -177,46 +184,47 @@ impl<'a> DuplicateNameDetector<'a> {
             }
             Pat::Assign(ref a) => self.declare_pat(&*a.left, kind, pos),
             Pat::Obj(ref o) => {
-                for part in o {
-                    match part {
-                        ObjPatPart::Assign(ref prop) => self.declare_prop(prop, kind, pos)?,
-                        ObjPatPart::Rest(ref pat) => self.declare_pat(pat, kind, pos)?,
+                for part in &o.props {
+                    match &part.item {
+                        ObjPatPart::Assign(prop) => self.declare_prop(prop, kind, pos)?,
+                        ObjPatPart::Rest(pat) => self.declare_pat(&pat.pat, kind, pos)?,
                     }
                 }
                 Ok(())
             }
-            Pat::RestElement(ref r) => self.declare_pat(&*r, kind, pos),
         }
     }
 
     fn declare_prop(&mut self, prop: &Prop<'a>, kind: DeclKind, pos: Position) -> Res<()> {
         log::trace!("declare_prop {:?} {:?} {:?}", prop, kind, pos);
-        match &prop.value {
-            PropValue::Expr(expr) => self.declare_expr(expr, kind, pos),
-            PropValue::Pat(pat) => self.declare_pat(pat, kind, pos),
-            PropValue::None => match &prop.key {
-                PropKey::Lit(lit) => self.declare_literal_ident(lit, kind, pos),
-                PropKey::Expr(expr) => self.declare_expr(expr, kind, pos),
-                PropKey::Pat(pat) => self.declare_pat(pat, kind, pos),
+        match &prop {
+            Prop::Init(prop) => match &prop.value {
+                Some(value) => match value {
+                    PropValue::Expr(expr) => self.declare_expr(expr, kind, pos),
+                    PropValue::Pat(pat) => self.declare_pat(pat, kind, pos),
+                    PropValue::Method(_) => Ok(()),
+                },
+                None => match &prop.key.value {
+                    PropKey::Lit(lit) => self.declare_literal_ident(lit, kind, pos),
+                    PropKey::Expr(expr) => self.declare_expr(expr, kind, pos),
+                    PropKey::Pat(pat) => self.declare_pat(pat, kind, pos),
+                },
             },
+            _ => Ok(()),
         }
     }
     fn declare_literal_ident(&mut self, lit: &Lit<'a>, kind: DeclKind, pos: Position) -> Res<()> {
         log::trace!("declare_literal_ident {:?} {:?} {:?}", lit, kind, pos);
         match lit {
-            Lit::String(s) => match s {
-                StringLit::Double(id) | StringLit::Single(id) => {
-                    self.declare(id.clone(), kind, pos)
-                }
-            },
+            Lit::String(s) => self.declare(s.content.source.clone(), kind, pos),
             _ => Err(Error::RestrictedIdent(pos)),
         }
     }
     pub fn declare_expr(&mut self, expr: &Expr<'a>, kind: DeclKind, pos: Position) -> Res<()> {
         log::trace!("declare_expr {:?} {:?} {:?}", expr, kind, pos);
         if let Expr::Ident(ref i) = expr {
-            log::trace!("add_expr ident {:?}", i.name);
-            self.declare(i.name.clone(), kind, pos)
+            log::trace!("add_expr ident {:?}", i.slice.source);
+            self.declare(i.slice.source.clone(), kind, pos)
         } else {
             Ok(())
         }
@@ -299,27 +307,27 @@ impl<'a> DuplicateNameDetector<'a> {
 
     pub fn add_export_spec(&mut self, spec: &ExportSpecifier<'a>, pos: Position) -> Res<()> {
         log::trace!("add_export_spec {:?} {:?}", spec, pos);
-        self.add_export_ident(&spec.exported, pos)?;
-        self.undefined_module_export_guard(spec.local.name.clone());
+        self.add_export_ident(&spec.local.slice.source, pos)?;
+        self.undefined_module_export_guard(spec.local.slice.source.clone());
         Ok(())
     }
 
     pub fn removed_undefined_export(&mut self, id: &Ident<'a>) {
         log::trace!("removed_undefined_export {:?}", id);
-        self.undefined_module_exports.remove(&id.name);
+        self.undefined_module_exports.remove(&id.slice.source);
     }
 
-    pub fn add_export_ident(&mut self, id: &Ident<'a>, pos: Position) -> Res<()> {
+    pub fn add_export_ident(&mut self, id: &Cow<'a, str>, pos: Position) -> Res<()> {
         log::trace!("add_export_ident {:?} {:?}", id, pos);
-        if !self.exports.insert(id.name.clone()) {
-            Err(Error::DuplicateExport(pos, id.name.to_string()))
+        if !self.exports.insert(id.clone()) {
+            Err(Error::DuplicateExport(pos, id.to_string()))
         } else {
             Ok(())
         }
     }
 
     pub fn undefined_module_export_guard(&mut self, id: Cow<'a, str>) {
-        trace!("add_module_export: {}", id);
+        log::trace!("add_module_export: {}", id);
         if !self.var.has_at(0, &id) && !self.lex.has_at(0, &id) {
             self.undefined_module_exports.insert(id);
         }
@@ -340,7 +348,7 @@ impl<'a> DuplicateNameDetector<'a> {
 /// check the last tier in the chain map for an identifier
 fn check<'a>(map: &mut LexMap<'a>, i: Cow<'a, str>, pos: Position) -> Res<()> {
     log::trace!("check {:?} {:?} {:?}", map, i, pos);
-    trace!("checking for {}", i);
+    log::trace!("checking for {}", i);
     if map.last_has(&i) {
         if let Some(old_pos) = map.get(&i) {
             if *old_pos < pos {
