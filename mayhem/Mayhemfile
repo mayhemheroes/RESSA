@@ -1,0 +1,6 @@
+project: ressa
+target: ressa-fuzz
+
+cmds:
+    - cmd: ./ressa-fuzz
+      libfuzzer: true
