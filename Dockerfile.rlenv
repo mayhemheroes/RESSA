@@ -1,0 +1,30 @@
+# Single-stage Dockerfile for RLENV Patch Playground
+# Original image: ghcr.io/mayhemheroes/ressa:master
+# Git revision: 58806aee2ab2df5a7d7ec5daf32112e700affc7a
+
+FROM ghcr.io/evanrichter/cargo-fuzz
+
+# Install any additional dependencies if needed
+# The cargo-fuzz image already contains:
+# - Rust nightly toolchain
+# - cargo-fuzz
+# - LLVM tools
+# - Build essentials
+
+# Copy source code to standardized location
+COPY . /rlenv/source/ressa
+
+# Set working directory for build
+WORKDIR /rlenv/source/ressa/fuzz
+
+# Build the fuzz target
+RUN cargo +nightly fuzz build
+
+# Copy the built fuzz binary to the expected location
+RUN cp /rlenv/source/ressa/fuzz/target/x86_64-unknown-linux-gnu/release/ressa-fuzz /ressa-fuzz
+
+# Copy rlenv directory from build context to /rlenv in the image
+COPY rlenv /rlenv
+
+# Set working directory
+WORKDIR /rlenv/source/ressa

@@ -21,3 +21,4 @@ moz-central
 test262_full
 *.zip
 bench.sh
+rlenv/mayhem/data/testsuite

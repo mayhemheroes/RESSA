@@ -1,0 +1,12 @@
+{
+  "workspace": "mayhemheroes",
+  "project": "ressa",
+  "target": "ressa-fuzz",
+  "run_id": "1",
+  "ci_url": "https://github.com:443/mayhemheroes/RESSA//actions/runs/3768068198",
+  "run_image_name": "ghcr.io/mayhemheroes/ressa:master",
+  "run_image_with_digest": "ghcr.io/mayhemheroes/ressa@sha256:840e733a66fc41ba299230ced7102e7d79e2f2685509b74c3efc6b13cb44f001",
+  "git_repo_url": "git@github.com:mayhemheroes/RESSA.git",
+  "git_revision": "58806aee2ab2df5a7d7ec5daf32112e700affc7a",
+  "target_executable": "/ressa-fuzz"
+}
