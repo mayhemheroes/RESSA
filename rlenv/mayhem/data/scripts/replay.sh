@@ -7,4 +7,6 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-RUST_BACKTRACE=1 /ressa-fuzz $1
+export ASAN_OPTIONS=symbolize=0:print_stacktrace=0 
+
+/ressa-fuzz $1
