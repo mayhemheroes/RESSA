@@ -19,7 +19,7 @@ cargo +nightly fuzz build
 
 # Copy the built fuzz binary to the expected location
 echo "Copying fuzz binary to /ressa-fuzz..."
-cp /rlenv/source/ressa/fuzz/target/x86_64-unknown-linux-gnu/release/ressa-fuzz /ressa-fuzz
+cp -f /rlenv/source/ressa/fuzz/target/x86_64-unknown-linux-gnu/release/ressa-fuzz /ressa-fuzz
 
 # Verify build artifacts exist
 if [ ! -f /ressa-fuzz ]; then
