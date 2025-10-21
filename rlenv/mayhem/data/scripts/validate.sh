@@ -27,7 +27,7 @@ fi
 
 # Read target executable from metadata if available
 TARGET_EXEC=""
-METADATA_FILE="$METADATA_DIR/../metadata.json"
+METADATA_FILE="$METADATA_DIR/../../metadata.json"
 if command -v jq >/dev/null 2>&1 && [ -f "$METADATA_FILE" ]; then
     TARGET_EXEC=$(jq -r '.target_executable // empty' "$METADATA_FILE" 2>/dev/null)
     if [ -n "$TARGET_EXEC" ] && [ "$TARGET_EXEC" != "null" ]; then
