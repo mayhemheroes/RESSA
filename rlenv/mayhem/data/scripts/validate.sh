@@ -27,7 +27,7 @@ fi
 
 # Read target executable from metadata if available
 TARGET_EXEC=""
-METADATA_FILE="$METADATA_DIR/../../metadata.json"
+METADATA_FILE="$METADATA_DIR/../metadata.json"
 if command -v jq >/dev/null 2>&1 && [ -f "$METADATA_FILE" ]; then
     TARGET_EXEC=$(jq -r '.target_executable // empty' "$METADATA_FILE" 2>/dev/null)
     if [ -n "$TARGET_EXEC" ] && [ "$TARGET_EXEC" != "null" ]; then
@@ -71,6 +71,12 @@ if [ -z "$PROBLEM_ID" ] && [ -f "$PROBLEM_ID_PATH" ]; then
     PROBLEM_ID=$(cat "$PROBLEM_ID_PATH" 2>/dev/null | tr -d '
 ')
     echo "Problem ID from file: $PROBLEM_ID"
+fi
+
+# Skip problem-specific validation for placeholder/invalid IDs
+if [[ "$PROBLEM_ID" =~ ^(nodata|none|null|)$ ]]; then
+    echo "Skipping problem-specific validation (problem ID is: '$PROBLEM_ID')"
+    PROBLEM_ID=""
 fi
 
 # If PROBLEM_ID is set, validate that the testcase is detected as a crash
