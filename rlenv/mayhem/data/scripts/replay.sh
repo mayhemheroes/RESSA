@@ -7,6 +7,8 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-export ASAN_OPTIONS=symbolize=0:print_stacktrace=0 
+export ASAN_OPTIONS=symbolize=0:print_stacktrace=0
 
-/ressa-fuzz $1
+# Disable ASLR for reproducible crashes
+# setarch -R disables address space randomization
+setarch $(uname -m) -R /ressa-fuzz $1
