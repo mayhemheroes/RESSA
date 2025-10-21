@@ -4,6 +4,9 @@
 
 FROM ghcr.io/evanrichter/cargo-fuzz
 
+# Install system dependencies including jq for validation
+RUN apt-get update && apt-get install -y jq && rm -rf /var/lib/apt/lists/*
+
 # Install any additional dependencies if needed
 # The cargo-fuzz image already contains:
 # - Rust nightly toolchain
