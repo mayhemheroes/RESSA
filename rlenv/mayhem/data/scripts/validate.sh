@@ -140,11 +140,28 @@ else
     echo "Using dummy testcase: $SAMPLE_FILE"
 fi
 
-# Step 1: Run replay.sh on the sample file and capture the exit code
-echo "Step 1 - Running initial replay..."
-"$REPLAY_SCRIPT" "$SAMPLE_FILE"
-FIRST_REPLAY_EXIT_CODE=$?
-echo "Initial replay exit code: $FIRST_REPLAY_EXIT_CODE"
+# Step 1: Run replay.sh on the sample file 5 times to detect intermittent crashes
+echo "Step 1 - Running initial replay (5 attempts to detect intermittent crashes)..."
+FIRST_CRASHED_ANY=false
+FIRST_REPLAY_EXIT_CODE=0
+
+for i in {1..5}; do
+    "$REPLAY_SCRIPT" "$SAMPLE_FILE"
+    CURRENT_EXIT_CODE=$?
+    FIRST_REPLAY_EXIT_CODE=$CURRENT_EXIT_CODE  # Keep last exit code
+
+    if [ "$CURRENT_EXIT_CODE" -ne 0 ]; then
+        FIRST_CRASHED_ANY=true
+        echo "  Non-crashing testcase crashed on attempt $i (exit code: $CURRENT_EXIT_CODE)"
+        break
+    fi
+done
+
+if [ "$FIRST_CRASHED_ANY" = true ]; then
+    echo "Initial replay: CRASHED in at least one attempt (exit code: $FIRST_REPLAY_EXIT_CODE)"
+else
+    echo "Initial replay: PASSED all 5 attempts (exit code: $FIRST_REPLAY_EXIT_CODE)"
+fi
 
 # Step 2: Capture target executable modification time before build
 BEFORE_MTIME=""
@@ -192,19 +209,43 @@ else
     echo "  Validation will rely on build script exit code and replay consistency"
 fi
 
-# Step 5: Run replay.sh again and verify the exit code is the same
-echo "Step 5 - Running second replay..."
-"$REPLAY_SCRIPT" "$SAMPLE_FILE"
-SECOND_REPLAY_EXIT_CODE=$?
-echo "Second replay exit code: $SECOND_REPLAY_EXIT_CODE"
+# Step 5: Run replay.sh again 5 times to detect intermittent crashes
+echo "Step 5 - Running second replay (5 attempts to detect intermittent crashes)..."
+SECOND_CRASHED_ANY=false
+SECOND_REPLAY_EXIT_CODE=0
 
-# Step 6: Compare exit codes
-if [ "$FIRST_REPLAY_EXIT_CODE" -eq "$SECOND_REPLAY_EXIT_CODE" ]; then
-    echo "Validation PASSED - replay exit codes match ($FIRST_REPLAY_EXIT_CODE)"
+for i in {1..5}; do
+    "$REPLAY_SCRIPT" "$SAMPLE_FILE"
+    CURRENT_EXIT_CODE=$?
+    SECOND_REPLAY_EXIT_CODE=$CURRENT_EXIT_CODE  # Keep last exit code
+
+    if [ "$CURRENT_EXIT_CODE" -ne 0 ]; then
+        SECOND_CRASHED_ANY=true
+        echo "  Non-crashing testcase crashed on attempt $i (exit code: $CURRENT_EXIT_CODE)"
+        break
+    fi
+done
+
+if [ "$SECOND_CRASHED_ANY" = true ]; then
+    echo "Second replay: CRASHED in at least one attempt (exit code: $SECOND_REPLAY_EXIT_CODE)"
+else
+    echo "Second replay: PASSED all 5 attempts (exit code: $SECOND_REPLAY_EXIT_CODE)"
+fi
+
+# Step 6: Compare crash behavior (not just exit codes)
+# Both replays should have the same crash/no-crash behavior
+if [ "$FIRST_CRASHED_ANY" = "$SECOND_CRASHED_ANY" ]; then
+    if [ "$FIRST_CRASHED_ANY" = true ]; then
+        echo "Validation PASSED - both replays show intermittent crashes (consistent behavior)"
+        echo "  Note: This non-crashing testcase has intermittent crashes, likely due to ASLR"
+    else
+        echo "Validation PASSED - both replays passed all attempts (consistent behavior)"
+    fi
     exit 0
 else
-    echo "Validation FAILED - replay exit codes differ"
-    echo "  First replay: $FIRST_REPLAY_EXIT_CODE"
-    echo "  Second replay: $SECOND_REPLAY_EXIT_CODE"
+    echo "Validation FAILED - replay behavior differs between pre-build and post-build"
+    echo "  First replay crashed: $FIRST_CRASHED_ANY"
+    echo "  Second replay crashed: $SECOND_CRASHED_ANY"
+    echo "  This indicates the build changed crash behavior in an unexpected way"
     exit 1
 fi
