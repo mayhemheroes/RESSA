@@ -13,14 +13,16 @@ cd /rlenv/source/ressa
 # Navigate to fuzz directory
 cd fuzz
 
-# Build the fuzz target using cargo-fuzz
-echo "Building fuzz target with cargo +nightly fuzz build..."
-cargo +nightly fuzz build
+# Build the fuzz target using cargo-fuzz in development mode (unoptimized)
+# This helps trigger stack exhaustion bugs by using larger stack frames
+echo "Building fuzz target with cargo +nightly fuzz build --dev..."
+cargo +nightly fuzz build --dev
 
 # Copy the built fuzz binary to the expected location
 echo "Copying fuzz binary to /ressa-fuzz..."
+# Note: --dev builds to debug directory instead of release
 # Use cat for busybox compatibility when we can't remove the file
-cat /rlenv/source/ressa/fuzz/target/x86_64-unknown-linux-gnu/release/ressa-fuzz > /ressa-fuzz
+cat /rlenv/source/ressa/fuzz/target/x86_64-unknown-linux-gnu/debug/ressa-fuzz > /ressa-fuzz
 
 # Verify build artifacts exist
 if [ ! -f /ressa-fuzz ]; then
