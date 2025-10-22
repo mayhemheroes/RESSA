@@ -27,7 +27,7 @@ fi
 
 # Read target executable from metadata if available
 TARGET_EXEC=""
-METADATA_FILE="$METADATA_DIR/../metadata.json"
+METADATA_FILE="$METADATA_DIR/metadata.json"
 if command -v jq >/dev/null 2>&1 && [ -f "$METADATA_FILE" ]; then
     TARGET_EXEC=$(jq -r '.target_executable // empty' "$METADATA_FILE" 2>/dev/null)
     if [ -n "$TARGET_EXEC" ] && [ "$TARGET_EXEC" != "null" ]; then
@@ -93,13 +93,13 @@ if [ -n "$PROBLEM_ID" ]; then
     fi
 
     echo "Testing that problem testcase $PROBLEM_ID is detected as a crash..."
-    echo "Running crash test 5 times - any crash indicates the vulnerability is present..."
+    echo "Running crash test 20 times - any crash indicates the vulnerability is present..."
 
     CRASHED_ANY=false
     PROBLEM_EXIT_CODE=0
 
-    for i in {1..5}; do
-        echo "  Attempt $i/5..."
+    for i in {1..20}; do
+        echo "  Attempt $i/20..."
         "$REPLAY_SCRIPT" "$PROBLEM_TESTCASE"
         CURRENT_EXIT_CODE=$?
         PROBLEM_EXIT_CODE=$CURRENT_EXIT_CODE  # Keep last exit code for reporting
@@ -113,7 +113,7 @@ if [ -n "$PROBLEM_ID" ]; then
     done
 
     if [ "$CRASHED_ANY" = false ]; then
-        echo "ERROR: Problem testcase $PROBLEM_ID did not crash in any of 5 attempts"
+        echo "ERROR: Problem testcase $PROBLEM_ID did not crash in any of 20 attempts"
         echo "Expected at least one crash to indicate the vulnerability is present"
         echo "Validation FAILED - problem testcase is not correctly detected as a crash"
         exit 1
@@ -140,12 +140,12 @@ else
     echo "Using dummy testcase: $SAMPLE_FILE"
 fi
 
-# Step 1: Run replay.sh on the sample file 5 times to detect intermittent crashes
-echo "Step 1 - Running initial replay (5 attempts to detect intermittent crashes)..."
+# Step 1: Run replay.sh on the sample file 20 times to detect intermittent crashes
+echo "Step 1 - Running initial replay (20 attempts to detect intermittent crashes)..."
 FIRST_CRASHED_ANY=false
 FIRST_REPLAY_EXIT_CODE=0
 
-for i in {1..5}; do
+for i in {1..20}; do
     "$REPLAY_SCRIPT" "$SAMPLE_FILE"
     CURRENT_EXIT_CODE=$?
     FIRST_REPLAY_EXIT_CODE=$CURRENT_EXIT_CODE  # Keep last exit code
@@ -160,7 +160,7 @@ done
 if [ "$FIRST_CRASHED_ANY" = true ]; then
     echo "Initial replay: CRASHED in at least one attempt (exit code: $FIRST_REPLAY_EXIT_CODE)"
 else
-    echo "Initial replay: PASSED all 5 attempts (exit code: $FIRST_REPLAY_EXIT_CODE)"
+    echo "Initial replay: PASSED all 20 attempts (exit code: $FIRST_REPLAY_EXIT_CODE)"
 fi
 
 # Step 2: Capture target executable modification time before build
@@ -209,12 +209,12 @@ else
     echo "  Validation will rely on build script exit code and replay consistency"
 fi
 
-# Step 5: Run replay.sh again 5 times to detect intermittent crashes
-echo "Step 5 - Running second replay (5 attempts to detect intermittent crashes)..."
+# Step 5: Run replay.sh again 20 times to detect intermittent crashes
+echo "Step 5 - Running second replay (20 attempts to detect intermittent crashes)..."
 SECOND_CRASHED_ANY=false
 SECOND_REPLAY_EXIT_CODE=0
 
-for i in {1..5}; do
+for i in {1..20}; do
     "$REPLAY_SCRIPT" "$SAMPLE_FILE"
     CURRENT_EXIT_CODE=$?
     SECOND_REPLAY_EXIT_CODE=$CURRENT_EXIT_CODE  # Keep last exit code
@@ -229,7 +229,7 @@ done
 if [ "$SECOND_CRASHED_ANY" = true ]; then
     echo "Second replay: CRASHED in at least one attempt (exit code: $SECOND_REPLAY_EXIT_CODE)"
 else
-    echo "Second replay: PASSED all 5 attempts (exit code: $SECOND_REPLAY_EXIT_CODE)"
+    echo "Second replay: PASSED all 20 attempts (exit code: $SECOND_REPLAY_EXIT_CODE)"
 fi
 
 # Step 6: Compare crash behavior (not just exit codes)

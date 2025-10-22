@@ -1,0 +1,6 @@
+{
+  "target_executable": "/ressa-fuzz",
+  "run_id": "mayhemheroes/ressa/ressa-fuzz/1",
+  "git_commit": "58806aee2ab2df5a7d7ec5daf32112e700affc7a",
+  "original_image": "ghcr.io/mayhemheroes/ressa:master"
+}

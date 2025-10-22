@@ -8,6 +8,7 @@ node_modules
 *.js
 *.mjs
 *.json
+!rlenv/mayhem/data/metadata.json
 .vscode
 package-lock.json
 benchmark.md
