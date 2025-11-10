@@ -37,5 +37,4 @@ COPY rlenv /rlenv
 # Make /rlenv/source world-writable so unprivileged users can build
 RUN chmod -R 777 /rlenv/source
 
-# Set working directory
-WORKDIR /rlenv/source/ressa
+WORKDIR /
