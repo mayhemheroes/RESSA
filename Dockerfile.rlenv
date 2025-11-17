@@ -29,7 +29,7 @@ RUN cargo +nightly fuzz build --dev
 # Copy the built fuzz binary to the expected location and make it world-writable
 # Note: --dev builds to debug directory instead of release
 RUN cp /rlenv/source/ressa/fuzz/target/x86_64-unknown-linux-gnu/debug/ressa-fuzz /ressa-fuzz && \
-    chmod 777 /ressa-fuzz
+    chmod 766 /ressa-fuzz
 
 # Copy rlenv directory from build context to /rlenv in the image
 COPY rlenv /rlenv
